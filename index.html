@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OneClick Tool Pro — V5 (Inline Preview)</title>
+
+<!-- Tailwind + icons -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+  :root{
+    --bg:#f6f8fb; --card:#ffffff; --muted:#6b7280; --accent:#2563eb;
+    --soft: 0 6px 20px rgba(15,23,42,0.06);
+  }
+  html,body{height:100%}
+  body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto; background:var(--bg); color:#0f172a; margin:0; -webkit-font-smoothing:antialiased;}
+  .card{background:var(--card); border-radius:14px; box-shadow:var(--soft); border:1px solid rgba(15,23,42,0.03);}
+  .small-txt{color:var(--muted); font-size:13px}
+  .focus-ring:focus{outline:2px solid rgba(37,99,235,0.12); outline-offset:2px; border-radius:8px;}
+  iframe.preview-frame{border:0;border-radius:8px;background:#fff}
+  /* responsive */
+  @media (max-width:900px){ .side { position:relative } }
+  .tool-btn:hover{transform:translateY(-3px); box-shadow:0 8px 24px rgba(2,6,23,0.06)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="p-4 bg-white/70 backdrop-blur-sm border-b">
+  <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="rounded-md p-2 bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow"><i class="fas fa-magic"></i></div>
+      <div>
+        <div class="text-lg font-semibold">OneClick Tool Pro</div>
+        <div class="text-xs small-txt">V5 — Inline Preview • Card Elevation UI</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="themeToggle" class="px-3 py-2 rounded-md bg-white border small-txt focus-ring"><i id="themeIcon" class="fas fa-moon"></i> <span class="hidden md:inline">Theme</span></button>
+      <button id="exportBtn" class="px-3 py-2 rounded-md bg-indigo-600 text-white hidden md:inline">Export</button>
+    </div>
+  </div>
+</header>
+
+<!-- Layout -->
+<div class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+  <!-- Sidebar -->
+  <aside class="md:col-span-3">
+    <div class="card p-4 space-y-4">
+      <div class="text-sm small-txt">TOOLS</div>
+      <nav class="grid gap-2">
+        <button data-target="images" class="tool-btn text-left flex items-center gap-3 p-3 rounded-md bg-blue-50 text-blue-700"><i class="fa-solid fa-image"></i> <span>Image</span></button>
+        <button data-target="video" class="tool-btn text-left flex items-center gap-3 p-3 rounded-md"><i class="fa-solid fa-video"></i> <span>Video</span></button>
+        <button data-target="pdf" class="tool-btn text-left flex items-center gap-3 p-3 rounded-md"><i class="fa-solid fa-file-pdf"></i> <span>PDF</span></button>
+        <button data-target="extras" class="tool-btn text-left flex items-center gap-3 p-3 rounded-md"><i class="fa-solid fa-th-list"></i> <span>Extras</span></button>
+        <button data-target="ai" class="tool-btn text-left flex items-center gap-3 p-3 rounded-md"><i class="fa-solid fa-robot"></i> <span>AI — Coming Soon</span></button>
+      </nav>
+
+      <div class="pt-4 border-t">
+        <div class="small-txt">Status</div>
+        <div id="statusSmall" class="text-sm mt-2">Ready — all tools client-side</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="md:col-span-9 space-y-6">
+    <!-- IMAGE TOOL CARD -->
+    <section id="images" class="card p-6">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-xl font-semibold">Image Tools</h3>
+          <div class="small-txt">Upload → preview → compress / resize / convert / crop</div>
+        </div>
+        <div class="small-txt">JPG • PNG • WebP • GIF</div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- controls -->
+        <div class="space-y-3">
+          <label class="block small-txt">Load image</label>
+          <div id="imageDrop" class="border-dashed border rounded-md p-3 cursor-pointer small-txt text-slate-600">Drop or click to upload <input id="imageFileInput" type="file" accept="image/*" class="hidden" /></div>
+          <div class="flex gap-2">
+            <button id="browseImage" class="flex-1 px-3 py-2 rounded-md bg-indigo-600 text-white">Browse</button>
+            <button id="clearImage" class="px-3 py-2 rounded-md border small-txt">Clear</button>
+          </div>
+
+          <div class="card p-3">
+            <div class="text-sm small-txt mb-2">Quick</div>
+            <div class="flex gap-2 flex-wrap">
+              <button id="quickCompress" class="px-3 py-2 bg-blue-50 rounded-md small-txt">Compress</button>
+              <button id="quickResize" class="px-3 py-2 bg-blue-50 rounded-md small-txt">Resize 50%</button>
+              <button id="quickConvert" class="px-3 py-2 bg-blue-50 rounded-md small-txt">Convert → WebP</button>
+              <button id="quickCrop" class="px-3 py-2 bg-blue-50 rounded-md small-txt">Crop Center</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- preview -->
+        <div class="lg:col-span-2">
+          <div class="card p-3">
+            <div id="imgPreviewWrap" class="min-h-[260px] flex items-center justify-center border border-transparent rounded-md">
+              <div id="imgPlaceholder" class="text-center small-txt text-slate-400">
+                <i class="fas fa-image text-4xl"></i>
+                <div class="mt-2">No image loaded</div>
+              </div>
+            </div>
+
+            <!-- panels inline -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="card p-3">
+                <div class="flex items-center justify-between">
+                  <div class="font-medium">Compress</div>
+                  <div class="small-txt" id="compressQVal">Quality 80%</div>
+                </div>
+                <input id="compressQuality" type="range" min="20" max="100" value="80" class="w-full mt-3" />
+                <div class="mt-3 flex items-center gap-2">
+                  <button id="compressRun" class="px-3 py-2 rounded-md bg-indigo-600 text-white">Run</button>
+                  <div id="compressStatus" class="small-txt"></div>
+                </div>
+              </div>
+
+              <div class="card p-3">
+                <div class="font-medium">Resize</div>
+                <div class="small-txt mt-1">Width / Height (px)</div>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                  <input id="resizeW" class="border rounded px-2 py-2 focus-ring" placeholder="Width" />
+                  <input id="resizeH" class="border rounded px-2 py-2 focus-ring" placeholder="Height" />
+                </div>
+                <div class="flex items-center gap-2 mt-3">
+                  <input id="keepAspect" type="checkbox" checked />
+                  <label class="small-txt">Keep aspect</label>
+                </div>
+                <div class="mt-3">
+                  <button id="resizeRun" class="px-3 py-2 rounded-md bg-emerald-600 text-white">Resize</button>
+                  <div id="resizeStatus" class="small-txt mt-2"></div>
+                </div>
+              </div>
+
+              <div class="card p-3 md:col-span-2">
+                <div class="font-medium">Convert & Crop</div>
+                <div class="flex gap-2 mt-3 items-center">
+                  <select id="convertFormatSel" class="border rounded px-2 py-2">
+                    <option value="image/webp">WebP</option>
+                    <option value="image/jpeg">JPEG</option>
+                    <option value="image/png">PNG</option>
+                  </select>
+                  <button id="convertRun" class="px-3 py-2 rounded-md bg-purple-600 text-white">Convert</button>
+                  <button id="openCrop" class="px-3 py-2 rounded-md bg-pink-600 text-white">Open Crop</button>
+                </div>
+                <div id="cropStatus" class="small-txt mt-2"></div>
+                <canvas id="cropCanvas" class="w-full mt-3 hidden"></canvas>
+                <div class="mt-2 flex gap-2">
+                  <button id="cropRun" class="px-3 py-2 rounded-md bg-pink-600 text-white">Download Crop</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIDEO TOOL CARD -->
+    <section id="video" class="card p-6 hidden">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-xl font-semibold">Video Tools</h3>
+          <div class="small-txt">Upload → preview → compress → download (WebM)</div>
+        </div>
+        <div class="small-txt">Works best for short clips</div>
+      </div>
+
+      <div class="mt-4 grid md:grid-cols-2 gap-4">
+        <div>
+          <div id="videoDrop" class="border-dashed border rounded-md p-3 cursor-pointer small-txt text-slate-600">Drop or click to upload <input id="videoInputFile" type="file" accept="video/*" class="hidden" /></div>
+          <div class="flex gap-2 mt-3">
+            <button id="browseVideo" class="px-3 py-2 rounded-md bg-red-600 text-white">Browse</button>
+            <button id="clearVideo" class="px-3 py-2 rounded-md border small-txt">Clear</button>
+          </div>
+
+          <div class="mt-4">
+            <label class="small-txt">Scale %</label>
+            <input id="videoScaleIn" type="range" min="10" max="100" value="50" class="w-full" />
+            <div class="flex justify-between small-txt mt-1"><span id="videoScaleVal">50%</span><span>Smaller ↔ quality</span></div>
+          </div>
+
+          <div class="mt-3">
+            <label class="small-txt">Bitrate (kbps)</label>
+            <select id="videoBitrate" class="border rounded px-2 py-2">
+              <option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option>
+            </select>
+          </div>
+
+          <div class="mt-4">
+            <button id="videoRunBtn" class="px-3 py-2 rounded-md bg-red-600 text-white">Compress & Download</button>
+            <div id="videoStatusTxt" class="small-txt mt-2"></div>
+            <div class="progress mt-2 hidden" id="videoProgress"><div style="width:0%" id="videoProgressFill"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card p-3">
+            <video id="videoPreviewEl" controls class="w-full rounded hidden"></video>
+            <div id="videoPlaceholder" class="text-center small-txt text-slate-400 py-12">
+              <i class="fas fa-video text-3xl"></i>
+              <div class="mt-2">No video loaded</div>
+            </div>
+            <div class="mt-3 small-txt" id="videoMeta">No video info</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PDF TOOL CARD -->
+    <section id="pdf" class="card p-6 hidden">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-xl font-semibold">PDF Tools</h3>
+          <div class="small-txt">Merge • Split • PDF→Images • Text→PDF • Unlock (rasterized)</div>
+        </div>
+      </div>
+
+      <div class="mt-4 grid md:grid-cols-3 gap-4">
+        <div class="card p-3">
+          <div class="font-medium">Merge PDFs</div>
+          <input id="mergePdfFiles" type="file" accept="application/pdf" multiple class="hidden" />
+          <div id="mergeDrop" class="mt-2 p-3 border-dashed border rounded-md text-center cursor-pointer small-txt">Click to select PDFs</div>
+          <div class="mt-3">
+            <button id="mergePdfBtn" class="px-3 py-2 rounded-md bg-indigo-600 text-white">Merge</button>
+            <div id="mergePdfStatus" class="small-txt mt-2"></div>
+          </div>
+        </div>
+
+        <div class="card p-3">
+          <div class="font-medium">Split PDF</div>
+          <input id="splitPdfFile" type="file" accept="application/pdf" class="hidden" />
+          <div id="splitDrop" class="mt-2 p-3 border-dashed border rounded-md text-center cursor-pointer small-txt">Select PDF</div>
+          <input id="splitPages" class="border rounded px-2 py-2 mt-2" placeholder="Pages (e.g. 1-3,5)"/>
+          <div class="mt-3">
+            <button id="splitPdfBtn" class="px-3 py-2 rounded-md bg-purple-600 text-white">Split</button>
+            <div id="splitPdfStatus" class="small-txt mt-2"></div>
+          </div>
+        </div>
+
+        <div class="card p-3">
+          <div class="font-medium">PDF → Images</div>
+          <input id="pdfToImgsFile" type="file" accept="application/pdf" class="hidden" />
+          <div id="pdfToImgDrop" class="mt-2 p-3 border-dashed border rounded-md text-center cursor-pointer small-txt">Select PDF</div>
+          <div class="mt-3">
+            <button id="pdfToImgsBtn" class="px-3 py-2 rounded-md bg-emerald-600 text-white">Convert → Images (ZIP)</button>
+            <div id="pdfToImgsStatus" class="small-txt mt-2"></div>
+          </div>
+
+          <hr class="my-3" />
+
+          <div class="font-medium">Text → PDF</div>
+          <textarea id="textToPdfContent" class="border rounded px-2 py-2 mt-2 h-20" placeholder="Paste text"></textarea>
+          <div class="mt-2">
+            <button id="textToPdfBtn" class="px-3 py-2 rounded-md bg-indigo-600 text-white">Create PDF</button>
+            <div id="textToPdfStatus" class="small-txt mt-2"></div>
+          </div>
+        </div>
+
+        <div class="card p-3 md:col-span-3">
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <div class="font-medium">Unlock PDF (rasterized)</div>
+              <input id="unlockPdfFile" type="file" accept="application/pdf" class="hidden" />
+              <div id="unlockDrop" class="mt-2 p-3 border-dashed border rounded-md text-center cursor-pointer small-txt">Select locked PDF</div>
+              <input id="unlockPdfPassword" type="password" class="border rounded px-2 py-2 mt-2" placeholder="Password (if known)"/>
+              <div class="mt-2">
+                <button id="unlockPdfBtn" class="px-3 py-2 rounded-md bg-amber-600 text-white">Unlock (rasterized)</button>
+                <div id="unlockPdfStatus" class="small-txt mt-2"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="font-medium">Images → PDF</div>
+              <input id="imgsToPdfFile" type="file" accept="image/*" multiple class="hidden" />
+              <div id="imgsToPdfDrop" class="mt-2 p-3 border-dashed border rounded-md text-center cursor-pointer small-txt">Select images</div>
+              <div class="mt-2">
+                <button id="imgsToPdfBtn" class="px-3 py-2 rounded-md bg-emerald-600 text-white">Create PDF</button>
+                <div id="imgsToPdfStatus" class="small-txt mt-2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-3 md:col-span-3">
+          <div id="pdfPreviewArea" class="min-h-[200px] text-center small-txt text-slate-400">PDF preview / outputs appear here</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXTRAS TOOL CARD -->
+    <section id="extras" class="card p-6 hidden">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-xl font-semibold">Extras</h3>
+          <div class="small-txt">QR • EXIF • HTML Preview — Inline Previews</div>
+        </div>
+      </div>
+
+      <div class="mt-4 grid md:grid-cols-3 gap-4">
+        <div class="card p-3">
+          <div class="font-medium">QR Generator</div>
+          <textarea id="qrText" class="border rounded px-2 py-2 mt-2 h-28" placeholder="Enter URL or text"></textarea>
+          <div class="flex gap-2 mt-3">
+            <select id="qrSize" class="border rounded px-2 py-2"><option value="200">200</option><option value="300" selected>300</option><option value="400">400</option></select>
+            <select id="qrColor" class="border rounded px-2 py-2"><option value="#000">Black</option><option value="#3b82f6">Blue</option><option value="#ef4444">Red</option></select>
+          </div>
+          <div class="mt-3">
+            <button id="genQrBtn" class="px-3 py-2 rounded-md bg-indigo-600 text-white">Generate</button>
+          </div>
+          <div id="qrOut" class="mt-3"></div>
+        </div>
+
+        <div class="card p-3">
+          <div class="font-medium">Image EXIF</div>
+          <input id="exifFile" type="file" accept="image/*" class="hidden" />
+          <div id="exifDrop" class="mt-2 p-3 border-dashed border rounded-md text-center cursor-pointer small-txt">Click to select image</div>
+          <div class="flex gap-2 mt-3">
+            <button id="viewExifBtn" class="px-3 py-2 rounded-md bg-amber-500 text-white">View EXIF</button>
+            <button id="removeExifBtn" class="px-3 py-2 rounded-md bg-amber-600 text-white">Remove EXIF</button>
+          </div>
+          <div id="exifOut" class="mt-3 small-txt"></div>
+        </div>
+
+        <div class="card p-3">
+          <div class="font-medium">HTML Preview (sandbox)</div>
+          <textarea id="htmlPreviewInput" class="border rounded px-2 py-2 mt-2 h-40 font-mono" placeholder="&lt;h1&gt;Hello&lt;/h1&gt;"></textarea>
+          <div class="flex gap-2 mt-3">
+            <button id="runHtmlBtn" class="px-3 py-2 rounded-md bg-blue-600 text-white">Run Preview</button>
+            <button id="clearHtmlBtn" class="px-3 py-2 rounded-md border small-txt">Clear</button>
+          </div>
+          <div class="mt-3">
+            <iframe id="htmlPreviewFrame" class="preview-frame w-full h-40" sandbox="allow-scripts allow-same-origin"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI -->
+    <section id="ai" class="card p-6 hidden text-center">
+      <div class="mb-4">
+        <div class="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-indigo-600 to-blue-500 text-white flex items-center justify-center text-2xl shadow-sm">
+          <i class="fas fa-robot"></i>
+        </div>
+      </div>
+      <h3 class="text-2xl font-semibold">AI Tools — Coming Soon</h3>
+      <div class="small-txt mt-2">Image upscaling, summarizer, assistant chat.</div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script>
+/* ---------- Utilities ---------- */
+function el(id){return document.getElementById(id);}
+function formatFileSize(bytes){const u=['B','KB','MB','GB'];let i=0;while(bytes>=1024 && i<u.length-1){bytes/=1024;i++}return `${Number(bytes.toFixed(2))} ${u[i]}`;}
+function downloadBlob(blob, filename){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+function safeRevoke(url){try{if(url)URL.revokeObjectURL(url)}catch(e){}}
+
+/* ---------- Navigation ---------- */
+document.querySelectorAll('button[data-target]').forEach(btn=>{
+  btn.addEventListener('click',()=> {
+    document.querySelectorAll('button[data-target]').forEach(b=>b.classList.remove('bg-blue-50','text-blue-700'));
+    btn.classList.add('bg-blue-50','text-blue-700');
+    const t = btn.dataset.target;
+    document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));
+    const show = document.getElementById(t);
+    if(show) show.classList.remove('hidden');
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+// default
+document.querySelector('button[data-target="images"]').click();
+
+/* Theme toggle */
+const themeBtn = el('themeToggle'), themeIcon = el('themeIcon');
+themeBtn.addEventListener('click', ()=> {
+  document.documentElement.classList.toggle('dark');
+  if(document.documentElement.classList.contains('dark')){ document.body.style.background='#071029'; themeIcon.classList.replace('fa-moon','fa-sun'); }
+  else { document.body.style.background=''; themeIcon.classList.replace('fa-sun','fa-moon'); }
+});
+
+/* ---------- IMAGE TOOLS ---------- */
+const imageDrop = el('imageDrop'), imageInput = el('imageFileInput'), browseImage = el('browseImage'), clearImageBtn = el('clearImage');
+const imgPreviewWrap = el('imgPreviewWrap');
+let loadedImage = { file:null, img:null, url:null };
+
+imageDrop.addEventListener('click', ()=> imageInput.click());
+browseImage.addEventListener('click', ()=> imageInput.click());
+imageInput.addEventListener('change', e => { if(e.target.files[0]) loadImageFile(e.target.files[0]); });
+['dragenter','dragover'].forEach(ev=>imageDrop.addEventListener(ev,e=>{e.preventDefault(); imageDrop.classList.add('ring-2');}));
+['dragleave','drop'].forEach(ev=>imageDrop.addEventListener(ev,e=>{e.preventDefault(); imageDrop.classList.remove('ring-2');}));
+imageDrop.addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files[0]; if(f && f.type.startsWith('image/')) loadImageFile(f); });
+
+function clearLoadedImage(){ safeRevoke(loadedImage.url); loadedImage = { file:null, img:null, url:null }; imgPreviewWrap.innerHTML = `<div id="imgPlaceholder" class="text-center small-txt text-slate-400"><i class="fas fa-image text-4xl"></i><div class="mt-2">No image loaded</div></div>`; el('cropCanvas').classList.add('hidden'); el('cropStatus').textContent=''; }
+clearImageBtn.addEventListener('click', clearLoadedImage);
+
+async function loadImageFile(file){
+  try{
+    clearLoadedImage();
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=> {
+      loadedImage = { file, img, url };
+      imgPreviewWrap.innerHTML = `<img id="mainPreview" src="${url}" alt="preview" class="max-w-full rounded" />`;
+    };
+    img.onerror = ()=> { alert('Failed to load image'); safeRevoke(url); clearLoadedImage(); };
+    img.src = url;
+  }catch(err){ alert('Error: ' + err.message); }
+}
+
+/* Quick buttons */
+el('quickCompress').addEventListener('click', ()=> el('compressRun').click());
+el('quickResize').addEventListener('click', ()=>{
+  if(!loadedImage.img) return alert('Load image first');
+  el('resizeW').value = Math.round(loadedImage.img.naturalWidth/2);
+  el('resizeH').value = Math.round(loadedImage.img.naturalHeight/2);
+  el('resizeRun').click();
+});
+el('quickConvert').addEventListener('click', ()=> { el('convertFormatSel').value='image/webp'; el('convertRun').click(); });
+el('quickCrop').addEventListener('click', ()=> { if(!loadedImage.img) return alert('Load image first'); openCrop(); el('cropRun').click(); });
+
+/* Compress */
+el('compressQuality').addEventListener('input', e => el('compressQVal').textContent = 'Quality ' + e.target.value + '%');
+el('compressRun').addEventListener('click', ()=> {
+  const status = el('compressStatus'); status.textContent='';
+  if(!loadedImage.img){ status.textContent='Load image first'; return; }
+  try{
+    status.textContent='Processing...';
+    const q = Number(el('compressQuality').value)/100;
+    const canvas = document.createElement('canvas'); canvas.width = loadedImage.img.naturalWidth; canvas.height = loadedImage.img.naturalHeight;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(loadedImage.img,0,0);
+    canvas.toBlob(blob => { downloadBlob(blob, loadedImage.file.name.replace(/\.[^.]+$/,'') + '-compressed.jpg'); status.textContent='Done'; }, 'image/jpeg', q);
+  }catch(e){ status.textContent = 'Error: ' + e.message; }
+});
+
+/* Resize */
+el('resizeRun').addEventListener('click', ()=> {
+  const status = el('resizeStatus'); status.textContent='';
+  if(!loadedImage.img){ status.textContent='Load image first'; return; }
+  try{
+    let w = Number(el('resizeW').value) || null; let h = Number(el('resizeH').value) || null; const keep = el('keepAspect').checked;
+    const ow = loadedImage.img.naturalWidth, oh = loadedImage.img.naturalHeight;
+    if(keep){ if(w && !h) h = Math.round(w * oh / ow); else if(h && !w) w = Math.round(h * ow / oh); else if(!w && !h){ w=ow; h=oh; } }
+    else { if(!w) w=ow; if(!h) h=oh; }
+    const canvas = document.createElement('canvas'); canvas.width = Math.max(1,w); canvas.height = Math.max(1,h);
+    const ctx = canvas.getContext('2d'); ctx.drawImage(loadedImage.img,0,0,canvas.width,canvas.height);
+    canvas.toBlob(blob => { downloadBlob(blob, loadedImage.file.name.replace(/\.[^.]+$/,'') + `-resized-${canvas.width}x${canvas.height}.jpg`); status.textContent='Done'; }, 'image/jpeg', 0.92);
+  }catch(e){ status.textContent = 'Error: ' + e.message; }
+});
+
+/* Convert */
+el('convertRun').addEventListener('click', ()=> {
+  const statusEl = el('convertStatus'); if(statusEl) statusEl.textContent='';
+  if(!loadedImage.img){ if(statusEl) statusEl.textContent='Load image first'; else alert('Load image first'); return; }
+  try{
+    const fmt = el('convertFormatSel').value; const ext = fmt.split('/')[1].replace('jpeg','jpg');
+    const canvas = document.createElement('canvas'); canvas.width = loadedImage.img.naturalWidth; canvas.height = loadedImage.img.naturalHeight;
+    canvas.getContext('2d').drawImage(loadedImage.img,0,0);
+    canvas.toBlob(blob => { downloadBlob(blob, loadedImage.file.name.replace(/\.[^.]+$/,'') + '-converted.' + ext); if(statusEl) statusEl.textContent='Done'; }, fmt, 0.95);
+  }catch(e){ if(el('convertStatus')) el('convertStatus').textContent='Error: '+e.message; }
+});
+
+/* Crop: inline preview + selection */
+let cropState = { startX:0,startY:0,endX:0,endY:0,dragging:false };
+function openCrop(){
+  const canvas = el('cropCanvas');
+  if(!loadedImage.img) return alert('Load image first');
+  canvas.classList.remove('hidden');
+  // set internal size
+  canvas.width = loadedImage.img.naturalWidth; canvas.height = loadedImage.img.naturalHeight;
+  const containerWidth = canvas.parentElement.clientWidth;
+  const cssHeight = Math.round((canvas.height / canvas.width) * containerWidth);
+  canvas.style.width = containerWidth + 'px'; canvas.style.height = cssHeight + 'px';
+  const ctx = canvas.getContext('2d');
+  function redraw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(loadedImage.img,0,0,canvas.width,canvas.height);
+    if(cropState.startX !== cropState.endX || cropState.startY !== cropState.endY){
+      const x = Math.min(cropState.startX,cropState.endX), y = Math.min(cropState.startY,cropState.endY);
+      const w = Math.abs(cropState.endX - cropState.startX), h = Math.abs(cropState.endY - cropState.startY);
+      ctx.strokeStyle = 'rgba(37,99,235,0.95)'; ctx.lineWidth = Math.max(2, Math.round(canvas.width/300));
+      ctx.strokeRect(x,y,w,h); ctx.fillStyle='rgba(59,130,246,0.08)'; ctx.fillRect(x,y,w,h);
+    }
+  }
+  redraw();
+  function toCanvasCoords(ev){
+    const rect = canvas.getBoundingClientRect();
+    const clientX = ev.clientX || (ev.touches && ev.touches[0].clientX), clientY = ev.clientY || (ev.touches && ev.touches[0].clientY);
+    const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+    return { x: Math.round((clientX - rect.left) * scaleX), y: Math.round((clientY - rect.top) * scaleY) };
+  }
+  canvas.onmousedown = e => { cropState.dragging=true; const p = toCanvasCoords(e); cropState.startX=p.x; cropState.startY=p.y; cropState.endX=p.x; cropState.endY=p.y; redraw(); };
+  canvas.onmousemove = e => { if(!cropState.dragging) return; const p = toCanvasCoords(e); cropState.endX=p.x; cropState.endY=p.y; redraw(); };
+  canvas.onmouseup = ()=> { cropState.dragging=false; el('cropStatus').textContent='Area selected'; };
+  canvas.ontouchstart = e=>{ e.preventDefault(); cropState.dragging=true; const p = toCanvasCoords(e.touches[0]); cropState.startX=p.x; cropState.startY=p.y; cropState.endX=p.x; cropState.endY=p.y; };
+  canvas.ontouchmove = e=>{ e.preventDefault(); if(!cropState.dragging) return; const p=toCanvasCoords(e.touches[0]); cropState.endX=p.x; cropState.endY=p.y; redraw(); };
+  canvas.ontouchend = ()=> { cropState.dragging=false; el('cropStatus').textContent='Area selected'; };
+}
+el('openCrop').addEventListener('click', ()=> openCrop());
+el('cropRun').addEventListener('click', ()=> {
+  if(!loadedImage.img) return el('cropStatus').textContent='Load image first';
+  const x = Math.min(cropState.startX,cropState.endX), y = Math.min(cropState.startY,cropState.endY);
+  const w = Math.abs(cropState.endX - cropState.startX), h = Math.abs(cropState.endY - cropState.startY);
+  if(w===0 || h===0) return el('cropStatus').textContent='Select area first';
+  const out = document.createElement('canvas'); out.width = w; out.height = h;
+  out.getContext('2d').drawImage(loadedImage.img, x, y, w, h, 0, 0, w, h);
+  out.toBlob(blob => { downloadBlob(blob, loadedImage.file.name.replace(/\.[^.]+$/,'') + '-cropped.jpg'); el('cropStatus').textContent='Downloaded'; }, 'image/jpeg', 0.95);
+});
+
+/* ---------- VIDEO ---------- */
+const videoDrop = el('videoDrop'), videoInputFile = el('videoInputFile'), browseVideo = el('browseVideo'), clearVideo = el('clearVideo');
+const videoPreviewEl = el('videoPreviewEl'), videoPlaceholder = el('videoPlaceholder'), videoMeta = el('videoMeta');
+let loadedVideo = { file:null, url:null }, videoProcessing=false;
+
+videoDrop.addEventListener('click', ()=> videoInputFile.click());
+browseVideo.addEventListener('click', ()=> videoInputFile.click());
+videoInputFile.addEventListener('change', e => { if(e.target.files[0]) loadVideoFile(e.target.files[0]); });
+['dragenter','dragover'].forEach(ev=>videoDrop.addEventListener(ev,e=>{e.preventDefault(); videoDrop.classList.add('ring-2');}));
+['dragleave','drop'].forEach(ev=>videoDrop.addEventListener(ev,e=>{e.preventDefault(); videoDrop.classList.remove('ring-2');}));
+videoDrop.addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files[0]; if(f && f.type.startsWith('video/')) loadVideoFile(f); });
+
+function loadVideoFile(file){
+  if(loadedVideo.url) safeRevoke(loadedVideo.url);
+  const url = URL.createObjectURL(file);
+  loadedVideo = { file, url };
+  videoPreviewEl.src = url; videoPreviewEl.classList.remove('hidden'); videoPlaceholder.classList.add('hidden');
+  videoMeta.textContent = `Name: ${file.name} · Size: ${formatFileSize(file.size)}`;
+  videoPreviewEl.addEventListener('loadedmetadata', ()=> { videoMeta.textContent = `Name: ${file.name} · Size: ${formatFileSize(file.size)} · Duration: ${Math.round(videoPreviewEl.duration)}s`; }, { once:true });
+}
+
+clearVideo.addEventListener('click', ()=> {
+  if(loadedVideo.url) safeRevoke(loadedVideo.url);
+  loadedVideo = { file:null, url:null };
+  videoPreviewEl.src=''; videoPreviewEl.classList.add('hidden'); videoPlaceholder.classList.remove('hidden');
+  videoMeta.textContent = 'No video info';
+});
+
+el('videoScaleIn').addEventListener('input', e => el('videoScaleVal').textContent = e.target.value + '%');
+
+el('videoRunBtn').addEventListener('click', async ()=> {
+  const status = el('videoStatusTxt'); status.textContent='';
+  const f = (videoInputFile.files && videoInputFile.files[0]) || loadedVideo.file;
+  if(!f){ status.textContent='Select a video file'; return; }
+  if(videoProcessing){ status.textContent='Processing in progress'; return; }
+  try{
+    videoProcessing = true;
+    status.textContent='Processing...';
+    el('videoProgress').classList.remove('hidden'); el('videoProgressFill').style.width='5%';
+    const scale = Math.max(0.1, Math.min(1, Number(el('videoScaleIn').value)/100));
+    const bitrate = Number(el('videoBitrate').value) * 1000;
+    const url = URL.createObjectURL(f);
+    const v = document.createElement('video');
+    v.src = url; v.muted = true; v.playsInline = true;
+    await v.play().catch(()=>{});
+    await new Promise(res => v.onloadedmetadata = res);
+    const cw = Math.max(1, Math.round(v.videoWidth * scale)), ch = Math.max(1, Math.round(v.videoHeight * scale));
+    const canvas = document.createElement('canvas'); canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    const stream = canvas.captureStream(25);
+    const mime = 'video/webm; codecs=vp8';
+    const opts = { mimeType: mime, videoBitsPerSecond: bitrate };
+    let recorder;
+    try{ recorder = new MediaRecorder(stream, opts); } catch(e){ el('videoStatusTxt').textContent='Recording not supported in this browser'; videoProcessing=false; return; }
+    const chunks=[];
+    recorder.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); const progress = Math.min(95, 5 + (v.currentTime / v.duration) * 90); el('videoProgressFill').style.width = progress + '%'; };
+    recorder.start(1000);
+    let raf;
+    function draw(){
+      if(v.paused || v.ended){ try{ recorder.stop(); } catch(e){}; return; }
+      ctx.drawImage(v,0,0,cw,ch);
+      raf = requestAnimationFrame(draw);
+    }
+    v.currentTime = 0; v.play(); draw();
+    recorder.onstop = () => {
+      el('videoProgressFill').style.width='100%';
+      const blob = new Blob(chunks, { type: mime });
+      downloadBlob(blob, f.name.replace(/\.[^.]+$/,'') + '-compressed.webm');
+      status.textContent = 'Compression finished — downloaded';
+      el('videoProgress').classList.add('hidden');
+      videoPreviewEl.src = URL.createObjectURL(blob);
+      if(raf) cancelAnimationFrame(raf);
+      safeRevoke(url);
+      videoProcessing = false;
+    };
+    v.addEventListener('pause', ()=> { if(recorder && recorder.state === 'recording') try{ recorder.stop(); } catch(e){} });
+  }catch(err){
+    el('videoStatusTxt').textContent = 'Error: ' + err.message; videoProcessing=false;
+  }
+});
+
+/* ---------- PDF ---------- */
+function attachDropHandler(dropId, inputId){
+  const drop = el(dropId), input = el(inputId);
+  drop.addEventListener('click', ()=> input.click());
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('ring-2');}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault(); drop.classList.remove('ring-2');}));
+  drop.addEventListener('drop', e => { e.preventDefault(); if(e.dataTransfer.files && e.dataTransfer.files.length) input.files = e.dataTransfer.files; });
+}
+attachDropHandler('mergeDrop','mergePdfFiles');
+attachDropHandler('splitDrop','splitPdfFile');
+attachDropHandler('pdfToImgDrop','pdfToImgsFile');
+attachDropHandler('unlockDrop','unlockPdfFile');
+attachDropHandler('imgsToPdfDrop','imgsToPdfFile');
+
+el('mergePdfBtn').addEventListener('click', async ()=> {
+  const status = el('mergePdfStatus'); status.textContent='';
+  const files = Array.from(el('mergePdfFiles').files || []);
+  if(files.length < 2){ status.textContent='Choose 2+ PDFs'; return; }
+  try{
+    status.textContent='Merging...';
+    const merged = await PDFLib.PDFDocument.create();
+    for(const f of files){
+      const buf = await f.arrayBuffer();
+      const donor = await PDFLib.PDFDocument.load(buf);
+      const pages = await merged.copyPages(donor, donor.getPageIndices());
+      pages.forEach(p => merged.addPage(p));
+    }
+    const bytes = await merged.save(); downloadBlob(new Blob([bytes],{type:'application/pdf'}), 'merged.pdf'); status.textContent='Merged — downloaded';
+  }catch(e){ status.textContent = 'Error: '+ e.message; }
+});
+
+el('splitPdfBtn').addEventListener('click', async ()=> {
+  const status = el('splitPdfStatus'); status.textContent='';
+  const f = el('splitPdfFile').files[0]; if(!f){ status.textContent='Select PDF'; return; }
+  try {
+    status.textContent='Processing...';
+    const arr = await f.arrayBuffer();
+    const src = await PDFLib.PDFDocument.load(arr);
+    const total = src.getPageCount();
+    let pagesStr = (el('splitPages').value || 'all').trim();
+    let pages = [];
+    if(pagesStr.toLowerCase() === 'all' || pagesStr === '') pages = Array.from({length:total},(_,i)=>i+1);
+    else {
+      pagesStr.split(',').forEach(part => { if(part.includes('-')){ const [a,b] = part.split('-').map(x=>parseInt(x.trim())); for(let i=a;i<=b;i++) pages.push(i); } else pages.push(Number(part.trim())); });
+    }
+    pages = pages.filter(p => p>=1 && p<=total);
+    if(!pages.length){ status.textContent='No valid pages'; return; }
+    const out = await PDFLib.PDFDocument.create();
+    const copied = await out.copyPages(src, pages.map(p=>p-1));
+    copied.forEach(p => out.addPage(p));
+    const bytes = await out.save(); downloadBlob(new Blob([bytes],{type:'application/pdf'}), f.name.replace(/\.[^.]+$/,'') + '-extracted.pdf'); status.textContent='Split done';
+  } catch(err){ status.textContent = 'Error: ' + err.message; }
+});
+
+el('pdfToImgsBtn').addEventListener('click', async ()=> {
+  const status = el('pdfToImgsStatus'); status.textContent='';
+  const f = el('pdfToImgsFile').files[0]; if(!f){ status.textContent='Select PDF'; return; }
+  try{
+    status.textContent='Rendering...';
+    const arr = await f.arrayBuffer();
+    const loading = pdfjsLib.getDocument({ data: arr });
+    const pdf = await loading.promise;
+    const zip = new JSZip(); const outArea = el('pdfPreviewArea'); outArea.innerHTML='';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i);
+      const vp = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement('canvas'); canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      const dataUrl = canvas.toDataURL('image/png'); const blob = await (await fetch(dataUrl)).blob();
+      zip.file(`page-${i}.png`, blob);
+      if(i===1){ const img = document.createElement('img'); img.src = dataUrl; img.className = 'max-w-full rounded'; outArea.appendChild(img); }
+    }
+    const content = await zip.generateAsync({ type:'blob' }); downloadBlob(content, f.name.replace(/\.[^.]+$/,'') + '-pages.zip');
+    status.textContent = 'Rendered pages downloaded';
+  }catch(err){ status.textContent = 'Error: ' + err.message; }
+});
+
+el('textToPdfBtn').addEventListener('click', async ()=> {
+  const status = el('textToPdfStatus'); status.textContent=''; const text = el('textToPdfContent').value || '';
+  if(!text.trim()){ status.textContent='Enter some text'; return; }
+  try{
+    status.textContent='Creating PDF...';
+    const pdfDoc = await PDFLib.PDFDocument.create(); const page = pdfDoc.addPage([595,842]); const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    const lines = text.split('\n'); let y = 820; const size = 12;
+    for(const line of lines){ page.drawText(line, { x:40, y, size, font }); y -= size + 6; if(y < 40) break; }
+    const bytes = await pdfDoc.save(); downloadBlob(new Blob([bytes],{type:'application/pdf'}), 'text-to-pdf.pdf'); status.textContent='Created';
+  }catch(err){ status.textContent='Error: ' + err.message; }
+});
+
+el('unlockPdfBtn').addEventListener('click', async ()=> {
+  const status = el('unlockPdfStatus'); status.textContent=''; const f = el('unlockPdfFile').files[0]; if(!f){ status.textContent='Select PDF'; return; }
+  try{
+    status.textContent='Opening (pdf.js)...';
+    const arr = await f.arrayBuffer(); const pass = el('unlockPdfPassword').value || undefined;
+    const loading = pdfjsLib.getDocument({ data: arr, password: pass });
+    let pdf;
+    try{ pdf = await loading.promise; } catch(e){ status.textContent = 'Wrong password or unsupported encryption'; return; }
+    status.textContent='Rasterizing pages...';
+    const outDoc = await PDFLib.PDFDocument.create();
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i); const vp = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement('canvas'); canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      const dataUrl = canvas.toDataURL('image/png'); const imgBuf = await (await fetch(dataUrl)).arrayBuffer();
+      const img = await outDoc.embedPng(imgBuf); const p = outDoc.addPage([img.width, img.height]); p.drawImage(img, { x:0, y:0, width: img.width, height: img.height });
+    }
+    const bytes = await outDoc.save(); downloadBlob(new Blob([bytes],{type:'application/pdf'}), f.name.replace(/\.[^.]+$/,'') + '-unlocked-rasterized.pdf'); status.textContent='Unlocked (rasterized)';
+  }catch(err){ status.textContent = 'Error: ' + err.message; }
+});
+
+el('imgsToPdfBtn').addEventListener('click', async ()=> {
+  const status = el('imgsToPdfStatus'); status.textContent=''; const files = Array.from(el('imgsToPdfFile').files || []); if(!files.length){ status.textContent='Select images'; return; }
+  try{
+    status.textContent='Creating PDF...'; const pdfDoc = await PDFLib.PDFDocument.create();
+    for(const f of files){
+      const buf = await f.arrayBuffer(); let imgObj;
+      if(f.type === 'image/png') imgObj = await pdfDoc.embedPng(buf); else imgObj = await pdfDoc.embedJpg(buf);
+      const page = pdfDoc.addPage([imgObj.width, imgObj.height]); page.drawImage(imgObj, { x:0, y:0, width: imgObj.width, height: imgObj.height });
+    }
+    const bytes = await pdfDoc.save(); downloadBlob(new Blob([bytes],{type:'application/pdf'}), 'images-to-pdf.pdf'); status.textContent='Created';
+  }catch(err){ status.textContent = 'Error: ' + err.message; }
+});
+
+/* ---------- EXTRAS: QR, EXIF, HTML Preview ---------- */
+el('genQrBtn').addEventListener('click', ()=> {
+  const text = el('qrText').value || ''; const size = Number(el('qrSize').value) || 300; const color = el('qrColor').value || '#000';
+  const out = el('qrOut'); out.innerHTML='';
+  if(!text.trim()){ out.textContent='Enter text or URL'; return; }
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = size;
+  QRCode.toCanvas(canvas, text, { width: size, color: { dark: color, light: '#fff' } }, err => {
+    if(err) { out.textContent = 'Error'; return; }
+    out.appendChild(canvas);
+    const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'qr.png'; a.textContent = 'Download PNG'; a.className='mt-2 block text-indigo-600 text-sm';
+    out.appendChild(a);
+  });
+});
+
+/* EXIF */
+const exifDrop = el('exifDrop'), exifFile = el('exifFile');
+exifDrop.addEventListener('click', ()=> exifFile.click());
+exifDrop.addEventListener('drop', e => { e.preventDefault(); if(e.dataTransfer.files && e.dataTransfer.files.length) exifFile.files = e.dataTransfer.files; });
+exifDrop.addEventListener('dragover', e => e.preventDefault());
+
+el('viewExifBtn').addEventListener('click', async ()=> {
+  const out = el('exifOut'); out.textContent=''; const f = exifFile.files[0]; if(!f){ out.textContent='Select image'; return; }
+  if(f.type === 'image/heic' || f.name.toLowerCase().endsWith('.heic')) { out.textContent='HEIC not supported'; return; }
+  try{ out.textContent='Reading EXIF...'; const ex = await exifr.parse(f).catch(()=>null); out.innerHTML = ex ? `<pre style="font-size:12px">${JSON.stringify(ex,null,2)}</pre>` : 'No EXIF metadata found'; } catch(err){ out.textContent = 'Error: ' + err.message; }
+});
+
+el('removeExifBtn').addEventListener('click', ()=> {
+  const out = el('exifOut'); out.textContent=''; const f = exifFile.files[0]; if(!f){ out.textContent='Select image'; return; }
+  if(f.type === 'image/heic' || f.name.toLowerCase().endsWith('.heic')){ out.textContent='HEIC not supported'; return; }
+  try{
+    out.textContent='Processing...';
+    const url = URL.createObjectURL(f); const img = new Image();
+    img.onload = ()=> {
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img,0,0);
+      c.toBlob(blob => { downloadBlob(blob, f.name.replace(/\.[^.]+$/,'') + '-noexif.jpg'); out.textContent='Downloaded without EXIF'; safeRevoke(url); }, 'image/jpeg', 0.95);
+    };
+    img.onerror = ()=> { out.textContent = 'Failed to process image'; safeRevoke(url); };
+    img.src = url;
+  }catch(err){ out.textContent = 'Error: ' + err.message; }
+});
+
+/* HTML Preview */
+el('runHtmlBtn').addEventListener('click', ()=> {
+  const code = el('htmlPreviewInput').value.trim();
+  const frame = el('htmlPreviewFrame'); const doc = frame.contentDocument || frame.contentWindow.document;
+  doc.open(); doc.write(code || '<h3 style="color:#64748b;text-align:center;margin-top:2rem">Nothing to preview</h3>'); doc.close();
+});
+el('clearHtmlBtn').addEventListener('click', ()=> { el('htmlPreviewInput').value=''; const doc = el('htmlPreviewFrame').contentDocument || el('htmlPreviewFrame').contentWindow.document; doc.open(); doc.write('<h3 style="color:#64748b;text-align:center;margin-top:2rem">Preview cleared</h3>'); doc.close(); });
+
+/* small UX */
+function setStatus(msg){ el('statusSmall').textContent = msg; }
+setStatus('Ready — Inline Preview Mode');
+
+/* cleanup object URLs when unloading */
+window.addEventListener('unload', ()=> { if(loadedImage.url) safeRevoke(loadedImage.url); if(loadedVideo.url) safeRevoke(loadedVideo.url); });
+
+</script>
+</body>
+</html>
+
